@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>自定义我的智能工具箱 </title>
+    <title>自定义我的智能工具箱 - 刘怀庆</title>
     <style>
         :root {
             --bg-image: none;
@@ -1916,7 +1916,7 @@
                     <h3>👨‍💻 作者信息</h3>
                     <p>本工具由池州学院教师刘怀庆，利用 AI 助手协助开发，致力于为用户提供简洁高效的工具管理解决方案。</p>
                     <p>版本：v5.0（云存储版）</p>
-                    <p>更新日期：2026年1月29日</p>
+                    <p>更新日期：2026年1月28日</p>
                 </div>
                 
                 <div class="about-section">
@@ -4486,30 +4486,46 @@ function showUserAuthModal() {
         }
         
         // 背景功能
-        function loadBackground() {
-            const bgType = localStorage.getItem('toolbox-bg-type') || 'image';
-            const bgImage = localStorage.getItem('toolbox-bg-image');
-            const bgColor = localStorage.getItem('toolbox-bg-color') || '#ffffff';
-            const bgOverlay = localStorage.getItem('toolbox-bg-overlay') || '15';
-            
-            currentBgType = bgType;
-            selectBgType(bgType);
-            
-            if (bgType === 'image' && bgImage) {
-                document.documentElement.style.setProperty('--bg-image', `url("${bgImage}")`);
-                document.getElementById('bgImageUrl').value = bgImage;
-            } else if (bgType === 'color') {
-                document.documentElement.style.setProperty('--bg-color', bgColor);
-                document.getElementById('bgColorPicker').value = bgColor;
-                document.getElementById('colorPreview').style.background = bgColor;
-            }
-            
-            document.documentElement.style.setProperty('--bg-overlay', `rgba(255, 255, 255, ${bgOverlay / 100})`);
-            document.getElementById('bgOverlay').value = bgOverlay;
-            document.getElementById('overlayValue').textContent = bgOverlay + '%';
-            
-            updateBgPreview();
+function loadBackground() {
+    const bgType = localStorage.getItem('toolbox-bg-type') || 'image';
+    const bgImage = localStorage.getItem('toolbox-bg-image');
+    const bgColor = localStorage.getItem('toolbox-bg-color') || '#ffffff';
+    const bgOverlay = localStorage.getItem('toolbox-bg-overlay') || '15';
+    
+    // ==========【新增】默认背景图片URL ==========
+    // 在这里设置你喜欢的默认背景图片
+    const DEFAULT_BACKGROUND_URL = 'https://www.czu.edu.cn/__local/5/86/A1/EDDA7171CE2075474BD7FE1FE45_90D8C969_240F64.jpg';
+    // 其他备选：
+    // const DEFAULT_BACKGROUND_URL = 'https://images.pexels.com/photos/531880/pexels-photo-531880.jpeg';
+    // const DEFAULT_BACKGROUND_URL = 'https://img95.699pic.com/photo/50046/5562.jpg_wh300.jpg';
+    // =========================================
+    
+    currentBgType = bgType;
+    selectBgType(bgType);
+    
+    if (bgType === 'image') {
+        // 修改这里：如果有自定义图片就用自定义的，否则用默认图片
+        const finalBgImage = bgImage || DEFAULT_BACKGROUND_URL;
+        
+        document.documentElement.style.setProperty('--bg-image', `url("${finalBgImage}")`);
+        document.getElementById('bgImageUrl').value = finalBgImage;
+        
+        // 如果是默认图片，也保存到localStorage，这样用户下次打开还是这个背景
+        if (!bgImage) {
+            localStorage.setItem('toolbox-bg-image', finalBgImage);
         }
+    } else if (bgType === 'color') {
+        document.documentElement.style.setProperty('--bg-color', bgColor);
+        document.getElementById('bgColorPicker').value = bgColor;
+        document.getElementById('colorPreview').style.background = bgColor;
+    }
+    
+    document.documentElement.style.setProperty('--bg-overlay', `rgba(255, 255, 255, ${bgOverlay / 100})`);
+    document.getElementById('bgOverlay').value = bgOverlay;
+    document.getElementById('overlayValue').textContent = bgOverlay + '%';
+    
+    updateBgPreview();
+}
         
         function selectBgType(type) {
             currentBgType = type;
