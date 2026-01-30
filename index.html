@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>自定义我的智能工具箱 - 刘怀庆</title>
+    <title> 我的智能工具箱 </title>
     <style>
         :root {
             --bg-image: none;
@@ -1602,6 +1602,10 @@
                     <button class="search-engine-btn" data-engine="zhihu" onclick="selectSearchEngine('zhihu')">
                         💡 知乎
                     </button>
+		    <!-- 在原有的搜索引擎按钮后面添加 -->
+		    <button class="search-engine-btn" data-engine="deepseek" onclick="selectSearchEngine('deepseek')">
+	                🤖 DeepSeek
+	 	    </button>
                     <button class="search-engine-btn" data-engine="github" onclick="selectSearchEngine('github')">
                         💻 GitHub
                     </button>
@@ -2286,6 +2290,13 @@
                 url: 'https://www.zhihu.com/search?type=content&q=',
                 icon: '💡'
             },
+
+   	     deepseek: {
+	            name: 'DeepSeek',
+	            url: 'https://www.deepseek.com/search?q=',
+	            icon: '🤖'
+	        },
+
             github: {
                 name: 'GitHub',
                 url: 'https://github.com/search?q=',
@@ -4071,30 +4082,44 @@ function showUserAuthModal() {
                 btn.classList.remove('active');
             });
             document.querySelector(`[data-engine="${engine}"]`).classList.add('active');
-            
-            document.getElementById('searchBtnText').textContent = `${searchEngines[engine].name}搜索`;
-            
+	
+	    if (!isSiteSearchEnabled) {
+        	document.getElementById('searchBtnText').textContent = `${searchEngines[engine].name}搜索`;
+	    }         
             updateSearchHint();
         }
+
         
-        function toggleSiteSearch() {
-            const toggle = document.getElementById('siteSearchToggle');
-            isSiteSearchEnabled = toggle.checked;
-            
-            const searchInput = document.getElementById('searchInput');
-            if (isSiteSearchEnabled) {
-                searchInput.placeholder = '🔍 搜索工具名称或描述...';
-                if (searchInput.value.trim()) {
-                    performSearch();
-                }
-            } else {
-                searchInput.placeholder = '🔍 输入关键词搜索...';
-                hideSearchResults();
-            }
-            
-            updateSearchHint();
+function toggleSiteSearch() {
+    const toggle = document.getElementById('siteSearchToggle');
+    isSiteSearchEnabled = toggle.checked;
+    
+    const searchInput = document.getElementById('searchInput');
+    const searchBtnText = document.getElementById('searchBtnText');
+    
+    if (isSiteSearchEnabled) {
+        // 站内搜索模式
+        searchInput.placeholder = '🔍 搜索工具名称或描述...';
+        searchBtnText.textContent = '站内搜索';
+        searchInput.focus(); // 可选：让搜索框获得焦点
+        
+        // 如果有输入内容，立即搜索
+        const query = searchInput.value.trim();
+        if (query) {
+            performSiteSearch();
         }
+    } else {
+        // 网页搜索模式
+        searchInput.placeholder = '🔍 输入关键词搜索...';
+        searchBtnText.textContent = `${searchEngines[currentSearchEngine].name}搜索`;
+        hideSearchResults();
+    }
+    
+    updateSearchHint();
+}
         
+
+
         function updateSearchHint() {
             const hintElement = document.getElementById('searchHint');
             if (isSiteSearchEnabled) {
@@ -4110,6 +4135,8 @@ function showUserAuthModal() {
             }
         }
         
+
+
         function handleSearchInput(event) {
             if (event.key === 'Enter') {
                 performSearch();
