@@ -4944,39 +4944,57 @@ document.head.appendChild(style);
 
         
         // 拖拽系统
-        function initModuleDragAndDrop() {
-            const container = document.getElementById('modulesContainer');
-             // 使用 Sortable.js 实现更好的拖拽         
-            new Sortable(container, {
-                animation: 150,
-                ghostClass: 'dragging',
-                chosenClass: 'dragging',
-                dragClass: 'dragging',
-                handle: isEditMode ? '.module' : false,
-                disabled: !isEditMode,
-                onEnd: function(evt) {
-                    updateModuleOrder();
-                }
-            });
+function initModuleDragAndDrop() {
+    const container = document.getElementById('modulesContainer');
+    
+    // 检查是否已存在Sortable实例
+    if (container.sortable) {
+        container.sortable.destroy();
+    }
+    
+    // 创建Sortable实例
+    container.sortable = new Sortable(container, {
+        animation: 150,
+        ghostClass: 'dragging',
+        chosenClass: 'dragging',
+        dragClass: 'dragging',
+        // 关键修改：根据编辑模式决定是否启用拖拽
+        disabled: !isEditMode,
+        onEnd: function(evt) {
+            if (isEditMode) { // 只有在编辑模式下才保存顺序
+                updateModuleOrder();
+            }
         }
-        
+    });
+}
+
+
+
 function initToolDragAndDrop(moduleElement) {
     const toolContainer = moduleElement.querySelector('.module-content');
     if (!toolContainer) return;
     
     const moduleId = moduleElement.dataset.moduleId;
     
-    new Sortable(toolContainer, {
+    // 检查是否已存在Sortable实例
+    if (toolContainer.sortable) {
+        toolContainer.sortable.destroy();
+    }
+    
+    // 创建Sortable实例
+    toolContainer.sortable = new Sortable(toolContainer, {
         animation: 150,
         ghostClass: 'tool-dragging',
         chosenClass: 'tool-dragging',
         dragClass: 'tool-dragging',
-        handle: isEditMode ? '.tool-item' : false,
+        // 关键修改：根据编辑模式决定是否启用拖拽
         disabled: !isEditMode,
-        group: 'tools', // 关键：所有工具容器共享同一个group
+        group: 'tools',
         draggable: '.tool-item',
         onEnd: function(evt) {
-            // 获取拖拽的目标模块
+            // 只有在编辑模式下才处理拖拽
+            if (!isEditMode) return;
+            
             const toContainer = evt.to;
             const toModuleElement = toContainer.closest('.module');
             
@@ -4996,13 +5014,24 @@ function initToolDragAndDrop(moduleElement) {
     });
 }
 
+
         
-        function initDragAndDrop() {
-            initModuleDragAndDrop();
-            document.querySelectorAll('.module').forEach(module => {
-                initToolDragAndDrop(module);
-            });
-        }
+
+
+
+function initDragAndDrop() {
+    if (!isEditMode) return; // 关键：只在编辑模式下初始化拖拽
+    
+    initModuleDragAndDrop();
+    document.querySelectorAll('.module').forEach(module => {
+        initToolDragAndDrop(module);
+    });
+}
+
+
+
+
+
         
         // 模块和工具管理功能
         function generateToolId() {
@@ -5278,33 +5307,87 @@ toolsHtml += `
             module.tools = newToolOrder;
             saveModules();
         }
+
+
+
+
         
-        function toggleEditMode() {
-            isEditMode = !isEditMode;
-            document.body.classList.toggle('edit-mode', isEditMode);
-            
-            const editIcon = document.getElementById('editIcon');
-            const editText = document.getElementById('editText');
-            const modeIndicator = document.getElementById('modeIndicator');
-            
-            if (isEditMode) {
-                editIcon.textContent = '🔒';
-                editText.textContent = '退出编辑';
-                modeIndicator.innerHTML = '✏️ 编辑模式';
-                initDragAndDrop();
-            } else {
-                editIcon.textContent = '✏️';
-                editText.textContent = '进入编辑模式';
-                modeIndicator.innerHTML = '🔒 浏览模式';
-                // 重新初始化模块拖拽（禁用状态）
-                initModuleDragAndDrop();
-            }
-            
-            // 更新工具项的可拖拽状态
-            document.querySelectorAll('.tool-item').forEach(item => {
-                item.draggable = isEditMode;
-            });
+
+function toggleEditMode() {
+    isEditMode = !isEditMode;
+    document.body.classList.toggle('edit-mode', isEditMode);
+    
+    const editIcon = document.getElementById('editIcon');
+    const editText = document.getElementById('editText');
+    const modeIndicator = document.getElementById('modeIndicator');
+    
+    if (isEditMode) {
+        editIcon.textContent = '🔒';
+        editText.textContent = '退出编辑';
+        modeIndicator.innerHTML = '✏️ 编辑模式';
+        
+        // 启用拖拽功能
+        initDragAndDrop();
+        
+        // 更新工具项的可拖拽状态
+        document.querySelectorAll('.tool-item').forEach(item => {
+            item.style.cursor = 'move';
+        });
+        
+    } else {
+        editIcon.textContent = '✏️';
+        editText.textContent = '进入编辑模式';
+        modeIndicator.innerHTML = '🔒 浏览模式';
+        
+        // 禁用拖拽功能
+        disableDragAndDrop();
+        
+        // 恢复工具项的默认光标
+        document.querySelectorAll('.tool-item').forEach(item => {
+            item.style.cursor = 'pointer';
+        });
+    }
+}
+
+
+
+
+
+
+
+
+function disableDragAndDrop() {
+    const container = document.getElementById('modulesContainer');
+    
+    // 销毁模块拖拽
+    if (container.sortable) {
+        container.sortable.destroy();
+        container.sortable = null;
+    }
+    
+    // 销毁所有工具拖拽
+    document.querySelectorAll('.module-content').forEach(toolContainer => {
+        if (toolContainer.sortable) {
+            toolContainer.sortable.destroy();
+            toolContainer.sortable = null;
         }
+    });
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         
         function updateModuleOrder() {
             const container = document.getElementById('modulesContainer');
