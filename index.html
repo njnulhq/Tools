@@ -935,6 +935,69 @@
             max-height: 100%;
         }
 
+/* =============== 工具右键菜单样式 =============== */
+.tool-context-menu {
+    position: fixed;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 5px 20px rgba(0,0,0,0.15);
+    z-index: 10000;
+    min-width: 160px;
+    border: 1px solid #e0e0e0;
+    display: none;
+    animation: slideDown 0.2s ease;
+}
+
+.context-menu-item {
+    padding: 10px 15px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    transition: background 0.2s;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.context-menu-item:last-child {
+    border-bottom: none;
+}
+
+.context-menu-item:hover {
+    background: #f5f5f5;
+}
+
+.context-menu-item.move-to-module {
+    position: relative;
+}
+
+.module-submenu {
+    position: absolute;
+    left: 100%;
+    top: 0;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 5px 20px rgba(0,0,0,0.15);
+    min-width: 180px;
+    max-height: 300px;
+    overflow-y: auto;
+    display: none;
+}
+
+.context-menu-item:hover .module-submenu {
+    display: block;
+}
+
+.submenu-item {
+    padding: 8px 12px;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.submenu-item:hover {
+    background: #e9ecef;
+}
+
+
         /* 工具信息 - 文字在图标下方居中 */
         .tool-info {
             flex: 1;
@@ -2254,7 +2317,10 @@
         let searchTimeout = null;
         let currentSearchEngine = 'baidu';
         let isSiteSearchEnabled = false;
-        
+        // ==================== 新增右键菜单变量 ====================
+	let selectedToolId = null;
+	let selectedToolModuleId = null;
+	let contextMenuVisible = false;
         // ==================== 新增云存储变量 ====================
         // ==================== 在这里替换为你的Supabase配置 ====================
         const SUPABASE_URL = 'https://zldpyrzatjiueghyzxda.supabase.co';  // 替换为你的Supabase URL
@@ -2361,6 +2427,25 @@ document.querySelectorAll('.password-input-group input[type="password"]').forEac
 
             initModuleDragAndDrop();
             updateSearchHint();
+
+
+    // 绑定全局点击事件关闭右键菜单
+    document.addEventListener('click', (event) => {
+        const contextMenu = document.getElementById('toolContextMenu');
+        if (contextMenuVisible && contextMenu && !event.target.closest('.tool-context-menu')) {
+            closeToolContextMenu();
+        }
+    });
+
+    // 阻止右键菜单在工具上的默认行为
+    document.addEventListener('contextmenu', (event) => {
+        if (event.target.closest('.tool-item')) {
+            // 已经处理了工具右键，不需要额外处理
+        } else if (contextMenuVisible) {
+            closeToolContextMenu();
+        }
+    });
+
         });
         
         // ==================== 新增用户系统函数 ====================
@@ -4683,6 +4768,180 @@ function loadBackground() {
             
             updateBgPreview();
         }
+
+
+
+
+
+
+// ==================== 右键菜单功能 ====================
+
+function showToolContextMenu(toolId, moduleId, event) {
+    event.preventDefault();
+    
+    selectedToolId = toolId;
+    selectedToolModuleId = moduleId;
+    
+    // 生成模块列表
+    updateModuleSubmenu();
+    
+    const contextMenu = document.getElementById('toolContextMenu');
+    const x = event.clientX;
+    const y = event.clientY;
+    
+    // 确保菜单不会超出屏幕
+    const menuWidth = 200;
+    const menuHeight = 150;
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+    
+    let finalX = x;
+    let finalY = y;
+    
+    if (x + menuWidth > viewportWidth) {
+        finalX = viewportWidth - menuWidth - 10;
+    }
+    
+    if (y + menuHeight > viewportHeight) {
+        finalY = viewportHeight - menuHeight - 10;
+    }
+    
+    contextMenu.style.left = finalX + 'px';
+    contextMenu.style.top = finalY + 'px';
+    contextMenu.style.display = 'block';
+    contextMenuVisible = true;
+    
+    // 点击其他地方关闭菜单
+    setTimeout(() => {
+        document.addEventListener('click', closeContextMenu);
+    }, 10);
+}
+
+function closeContextMenu(event) {
+    if (contextMenuVisible) {
+        const contextMenu = document.getElementById('toolContextMenu');
+        if (!contextMenu.contains(event.target)) {
+            contextMenu.style.display = 'none';
+            contextMenuVisible = false;
+            document.removeEventListener('click', closeContextMenu);
+        }
+    }
+}
+
+function updateModuleSubmenu() {
+    const submenu = document.getElementById('moduleSubmenu');
+    submenu.innerHTML = '';
+    
+    currentModules.forEach(module => {
+        // 不显示当前模块
+        if (module.id !== selectedToolModuleId) {
+            const item = document.createElement('div');
+            item.className = 'submenu-item';
+            item.textContent = `${module.icon} ${module.name}`;
+            item.onclick = () => moveToolToModule(selectedToolId, selectedToolModuleId, module.id);
+            submenu.appendChild(item);
+        }
+    });
+    
+    if (submenu.children.length === 0) {
+        const item = document.createElement('div');
+        item.className = 'submenu-item';
+        item.textContent = '暂无其他模块';
+        item.style.color = '#95a5a6';
+        item.style.cursor = 'default';
+        submenu.appendChild(item);
+    }
+}
+
+function editSelectedTool() {
+    if (selectedToolId && selectedToolModuleId) {
+        editTool(selectedToolId, selectedToolModuleId, { preventDefault: () => {} });
+        closeToolContextMenu();
+    }
+}
+
+function deleteSelectedTool() {
+    if (selectedToolId && selectedToolModuleId) {
+        if (confirm('确定要删除这个工具吗？')) {
+            deleteTool(selectedToolId, selectedToolModuleId, { preventDefault: () => {} });
+            closeToolContextMenu();
+        }
+    }
+}
+
+function moveToolToModule(toolId, fromModuleId, toModuleId) {
+    const fromModule = currentModules.find(m => m.id === fromModuleId);
+    const toModule = currentModules.find(m => m.id === toModuleId);
+    
+    if (!fromModule || !toModule) return;
+    
+    const toolIndex = fromModule.tools.findIndex(t => t.id === toolId);
+    if (toolIndex === -1) return;
+    
+    // 移动工具
+    const [tool] = fromModule.tools.splice(toolIndex, 1);
+    toModule.tools.push(tool);
+    
+    saveModules();
+    renderModules();
+    
+    // 显示移动成功提示
+    const toolName = tool.name;
+    const fromModuleName = fromModule.name;
+    const toModuleName = toModule.name;
+    
+    showToast(`✅ 已将 "${toolName}" 从 "${fromModuleName}" 移动到 "${toModuleName}"`);
+    
+    closeToolContextMenu();
+}
+
+function closeToolContextMenu() {
+    const contextMenu = document.getElementById('toolContextMenu');
+    contextMenu.style.display = 'none';
+    contextMenuVisible = false;
+    document.removeEventListener('click', closeContextMenu);
+}
+
+function showToast(message) {
+    const toast = document.createElement('div');
+    toast.style.cssText = `
+        position: fixed;
+        bottom: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: rgba(0,0,0,0.8);
+        color: white;
+        padding: 10px 20px;
+        border-radius: 20px;
+        z-index: 10000;
+        animation: fadeInOut 2s ease;
+    `;
+    toast.textContent = message;
+    document.body.appendChild(toast);
+    
+    setTimeout(() => {
+        toast.remove();
+    }, 2000);
+}
+
+// 添加CSS动画
+const style = document.createElement('style');
+style.textContent = `
+    @keyframes fadeInOut {
+        0% { opacity: 0; transform: translateX(-50%) translateY(20px); }
+        15% { opacity: 1; transform: translateX(-50%) translateY(0); }
+        85% { opacity: 1; transform: translateX(-50%) translateY(0); }
+        100% { opacity: 0; transform: translateX(-50%) translateY(-20px); }
+    }
+`;
+document.head.appendChild(style);
+
+
+
+
+
+
+
         
         // 拖拽系统
         function initModuleDragAndDrop() {
@@ -4701,22 +4960,42 @@ function loadBackground() {
             });
         }
         
-        function initToolDragAndDrop(moduleElement) {
-            const toolContainer = moduleElement.querySelector('.module-content');
-            if (!toolContainer) return;
+function initToolDragAndDrop(moduleElement) {
+    const toolContainer = moduleElement.querySelector('.module-content');
+    if (!toolContainer) return;
+    
+    const moduleId = moduleElement.dataset.moduleId;
+    
+    new Sortable(toolContainer, {
+        animation: 150,
+        ghostClass: 'tool-dragging',
+        chosenClass: 'tool-dragging',
+        dragClass: 'tool-dragging',
+        handle: isEditMode ? '.tool-item' : false,
+        disabled: !isEditMode,
+        group: 'tools', // 关键：所有工具容器共享同一个group
+        draggable: '.tool-item',
+        onEnd: function(evt) {
+            // 获取拖拽的目标模块
+            const toContainer = evt.to;
+            const toModuleElement = toContainer.closest('.module');
             
-            new Sortable(toolContainer, {
-                animation: 150,
-                ghostClass: 'tool-dragging',
-                chosenClass: 'tool-dragging',
-                dragClass: 'tool-dragging',
-                handle: isEditMode ? '.tool-item' : false,
-                disabled: !isEditMode,
-                onEnd: function(evt) {
+            if (toModuleElement) {
+                const toModuleId = toModuleElement.dataset.moduleId;
+                const toolId = evt.item.dataset.toolId;
+                
+                if (moduleId !== toModuleId) {
+                    // 跨模块拖拽
+                    moveToolToModule(toolId, moduleId, toModuleId);
+                } else {
+                    // 同模块内拖拽
                     updateToolOrderInModule(moduleElement);
                 }
-            });
+            }
         }
+    });
+}
+
         
         function initDragAndDrop() {
             initModuleDragAndDrop();
@@ -4822,23 +5101,26 @@ function loadBackground() {
             let toolsHtml = '';
             if (module.tools && module.tools.length > 0) {
                 module.tools.forEach(tool => {
-                    toolsHtml += `
-                        <a href="${tool.url}" target="_blank" class="tool-item" data-tool-id="${tool.id}">
-                            <div class="tool-controls">
-                                <button class="tool-edit-btn" onclick="editTool('${tool.id}', '${module.id}', event)">✏️</button>
-                                <button class="tool-delete-btn" onclick="deleteTool('${tool.id}', '${module.id}', event)">×</button>
-                            </div>
-                            <div class="tool-icon">
-                                ${tool.icon.startsWith('http') || tool.icon.startsWith('data:image') ? 
-                                    `<img src="${tool.icon}" alt="${tool.name}" onerror="this.style.display='none';this.parentElement.innerHTML='${tool.name.charAt(0)}';">` : 
-                                    tool.icon}
-                            </div>
-                            <div class="tool-info">
-                                <div class="tool-name">${tool.name}</div>
-                                <div class="tool-desc">${tool.desc}</div>
-                            </div>
-                        </a>
-                    `;
+toolsHtml += `
+    <a href="${tool.url}" target="_blank" class="tool-item" 
+       data-tool-id="${tool.id}" 
+       data-module-id="${module.id}"
+       oncontextmenu="showToolContextMenu('${tool.id}', '${module.id}', event); return false;">
+        <div class="tool-controls">
+            <button class="tool-edit-btn" onclick="editTool('${tool.id}', '${module.id}', event)">✏️</button>
+            <button class="tool-delete-btn" onclick="deleteTool('${tool.id}', '${module.id}', event)">×</button>
+        </div>
+        <div class="tool-icon">
+            ${tool.icon.startsWith('http') || tool.icon.startsWith('data:image') ? 
+                `<img src="${tool.icon}" alt="${tool.name}" onerror="this.style.display='none';this.parentElement.innerHTML='${tool.name.charAt(0)}';">` : 
+                tool.icon}
+        </div>
+        <div class="tool-info">
+            <div class="tool-name">${tool.name}</div>
+            <div class="tool-desc">${tool.desc}</div>
+        </div>
+    </a>
+`;
                 });
             } else {
                 toolsHtml = `
@@ -5315,6 +5597,25 @@ function loadBackground() {
             input.click();
         }
     </script>
+    
+    <!-- 工具右键菜单 -->
+    <div class="tool-context-menu" id="toolContextMenu">
+        <div class="context-menu-item" onclick="editSelectedTool()">
+            <span>✏️</span>
+            <span>编辑工具</span>
+        </div>
+        <div class="context-menu-item" onclick="deleteSelectedTool()">
+            <span>🗑️</span>
+            <span>删除工具</span>
+        </div>
+        <div class="context-menu-item move-to-module">
+            <span>📤</span>
+            <span>移动到模块</span>
+            <div class="module-submenu" id="moduleSubmenu">
+                <!-- 模块列表会动态生成 -->
+            </div>
+        </div>
+    </div>
     
     <!-- 引入 Supabase JS 库 -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
